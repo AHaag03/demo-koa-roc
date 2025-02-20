@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "undefined/subscriptions/e7ad6c92-a009-4b2b-8713-49d5855b3009/resourceGroups/appsvc_linux_centralus/providers/Microsoft.Web/sites/demo-koa-roc",
+    "appService.deploySubpath": "."
+}
