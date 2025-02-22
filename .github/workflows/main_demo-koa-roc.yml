@@ -64,5 +64,5 @@ jobs:
         with:
           app-name: 'demo-koa-roc'
           slot-name: 'Production'
-          package: .
+          package: './koaa-react-demo/build'
           
