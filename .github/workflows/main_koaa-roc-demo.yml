@@ -1,7 +1,4 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy Node.js app to Azure Web App - koaa-roc-demo
+name: Build and Deploy Node.js and React apps to Azure Web Apps
 
 on:
   push:
@@ -10,13 +7,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-react:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read # This is required for actions/checkout
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Node.js version
         uses: actions/setup-node@v3
@@ -27,38 +25,65 @@ jobs:
         run: npm install
         working-directory: ./koaa-react-demo
 
-      - name: Build React app
+      - name: Build the React app
         run: npm run build
         working-directory: ./koaa-react-demo
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./koaa-react-demo/build -r
+        run: zip -r react-release.zip ./koaa-react-demo/build
 
-      - name: Upload artifact for deployment job
+      - name: Upload React artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-app
+          path: react-release.zip
+
+  build-node:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # This is required for actions/checkout
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js version
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22.x'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./koa-roc-demo
+
+      - name: Zip artifact for deployment
+        run: zip -r node-release.zip ./koa-roc-demo
+
+      - name: Upload Node artifact
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: release.zip
+          path: node-release.zip
 
-  deploy:
+  deploy-react:
     runs-on: ubuntu-latest
-    needs: build
+    needs: build-react
     environment:
       name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+      url: ${{ steps.deploy-react-to-webapp.outputs.webapp-url }}
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write # This is required for requesting the JWT
+      contents: read # This is required for actions/checkout
 
     steps:
-      - name: Download artifact from build job
+      - name: Download React artifact
         uses: actions/download-artifact@v4
         with:
-          name: node-app
+          name: react-app
 
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-      
+      - name: Unzip React artifact for deployment
+        run: unzip react-release.zip
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -66,11 +91,42 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_CBB66C2F73224A0F81D00E724B0A9C95 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_727BAD769B814D139EB3BF6CE3ED469E }}
 
-      - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
+      - name: Deploy React app to Azure Web App
+        id: deploy-react-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'koaa-roc-demo'
-          slot-name: 'Production'
-          package: ./koaa-react-demo/build
-          
+          app-name: 'react-app-name'
+          package: './koaa-react-demo/build'
+
+  deploy-node:
+    runs-on: ubuntu-latest
+    needs: build-node
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-node-to-webapp.outputs.webapp-url }}
+    permissions:
+      id-token: write # This is required for requesting the JWT
+      contents: read # This is required for actions/checkout
+
+    steps:
+      - name: Download Node artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: node-app
+
+      - name: Unzip Node artifact for deployment
+        run: unzip node-release.zip
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_F6CF5A2EDE1547AAA486CC0FEBC778FD }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_CBB66C2F73224A0F81D00E724B0A9C95 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_727BAD769B814D139EB3BF6CE3ED469E }}
+
+      - name: Deploy Node.js app to Azure Web App
+        id: deploy-node-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'node-app-name'
+          package: './koa-roc-demo'
